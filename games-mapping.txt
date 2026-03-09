@@ -1,0 +1,11 @@
+# Game folder name to Steam AppID mapping
+# Format: FolderName=AppID
+Dishonored=205100
+TrialsofMana=924980
+HeaveHo=905340
+deusexhuman=238010
+banishers=1493640
+MYHEROACADEMIAAllsJustice=689920
+ROMEOISADEADMAN=2379920
+lostrecordsbloomrage=1599080
+goodbyevolcanohigh=1310330
