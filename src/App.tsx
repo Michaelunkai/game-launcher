@@ -25,8 +25,8 @@ import { demoApi } from "./demoApi";
 const api: LauncherApi = window.gameLauncher ?? demoApi;
 type ActiveView = "library" | "recent" | "favorites" | "mods" | "settings";
 type LibraryFilter = "all" | "favorites" | "played" | "enabled-mods" | "needs-review";
-type LibrarySort = "title" | "recent" | "playtime" | "confidence";
 type ModCatalogsByGame = Record<string, GameModCatalog>;
+const activeViews = new Set<ActiveView>(["library", "recent", "favorites", "mods", "settings"]);
 
 const navItems: Array<{ id: ActiveView; label: string }> = [
   { id: "library", label: "Library" },
@@ -48,21 +48,13 @@ const libraryFilters: Array<{ id: LibraryFilter; label: string }> = [
   { id: "needs-review", label: "Needs review" },
 ];
 
-const librarySorts: Array<{ id: LibrarySort; label: string }> = [
-  { id: "title", label: "Title A-Z" },
-  { id: "recent", label: "Recent first" },
-  { id: "playtime", label: "Most played" },
-  { id: "confidence", label: "Best EXE match" },
-];
-
 export default function App() {
   const [games, setGames] = useState<GameRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
-  const [activeView, setActiveView] = useState<ActiveView>("library");
+  const [activeView, setActiveView] = useState<ActiveView>(() => getInitialView());
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [filterMode, setFilterMode] = useState<LibraryFilter>("all");
-  const [sortMode, setSortMode] = useState<LibrarySort>("title");
   const [scanProgress, setScanProgress] = useState<ScanProgress[]>([]);
   const [modCatalog, setModCatalog] = useState<GameModCatalog>();
   const [allModCatalogs, setAllModCatalogs] = useState<ModCatalogsByGame>({});
@@ -162,7 +154,7 @@ export default function App() {
           return next;
         });
         const modCount = catalogs.reduce((sum, catalog) => sum + catalog.summary.totalSources, 0);
-        setStatus(`Loaded ${modCount} real mod/trainer/fix entries for ${missing.length} games.`);
+        setStatus(`Loaded ${modCount} ready mod/fix entries with what they do for ${missing.length} games.`);
       })
       .catch((error) => {
         setStatus(error instanceof Error ? `Real mod loading failed: ${error.message}` : "Real mod loading failed.");
@@ -181,7 +173,7 @@ export default function App() {
       .toLowerCase()
       .includes(deferredQuery.toLowerCase()),
   );
-  const filtered = sortGames(
+  const filtered = sortGamesByLastPlayed(
     searched.filter((game) => {
       if (filterMode === "favorites") return favoriteSet.has(game.id);
       if (filterMode === "played") return game.totalPlaySeconds > 0 || Boolean(game.lastPlayedAt);
@@ -189,9 +181,8 @@ export default function App() {
       if (filterMode === "needs-review") return game.matchStatus === "needs-review" || game.executableConfidence < 84;
       return true;
     }),
-    sortMode,
   );
-  const favoriteGames = sortGames(games.filter((game) => favoriteSet.has(game.id)), sortMode);
+  const favoriteGames = sortGamesByLastPlayed(games.filter((game) => favoriteSet.has(game.id)));
   const recentlyPlayed = [...filtered]
     .filter((game) => game.totalPlaySeconds > 0 || game.lastPlayedAt)
     .sort((a, b) => {
@@ -261,9 +252,15 @@ export default function App() {
   async function launchGameWithSavedMods(game: GameRecord) {
     const catalog = allModCatalogs[game.id] ?? (modCatalog?.gameId === game.id ? modCatalog : undefined);
     setSelectedId(game.id);
-    setStatus(`Launching ${game.title} with ${catalog?.summary.enabled ?? 0} saved mod preferences; provider/API mods apply through their validated route.`);
+    setStatus(`Launching ${game.title} with ${catalog?.summary.enabled ?? 0} enabled mod routes.`);
     const result = await api.launchGame(game.id);
     setStatus(result.message);
+  }
+
+  function openGameHub(game: GameRecord) {
+    setSelectedId(game.id);
+    setActiveView("library");
+    setStatus(`Opened ${game.title} with Play, metadata, and the full mod menu ready.`);
   }
 
   function toggleFavorite(gameId: string) {
@@ -279,13 +276,13 @@ export default function App() {
       if (selected?.id === game.id) setModCatalog(catalog);
       setAllModCatalogs((current) => ({ ...current, [game.id]: catalog }));
     }
-    const savedWord = enabled ? "Saved" : "Removed";
-    setStatus(`${savedWord} mod preference permanently. ${result.message}`);
+    const actionWord = enabled ? "Enabled" : "Disabled";
+    setStatus(`${actionWord} ${game.title} mod route permanently. ${result.message}`);
   }
 
   function selectView(view: ActiveView) {
     setActiveView(view);
-    if (view === "mods") setStatus("Loading every discovered game's mod sources, saved preferences, and verified integration status.");
+    if (view === "mods") setStatus("Loading every discovered game's ready mod routes and permanent enable/disable state.");
     if (view === "recent") setStatus("Showing games with real tracked launcher playtime.");
   }
 
@@ -339,7 +336,7 @@ export default function App() {
           <StatCard icon={<LibraryBig size={18} />} label="Real games found" value={String(games.length)} subvalue="Auto-scanned on every launch" />
           <StatCard icon={<MonitorPlay size={18} />} label="Playable EXEs" value={`${playableCount}/${games.length || 0}`} subvalue={`${verifiedCount} high confidence`} />
           <StatCard icon={<DatabaseZap size={18} />} label="Provider enriched" value={String(enrichedCount)} subvalue="Steam data, art, dates, genres" />
-          <StatCard icon={<Puzzle size={18} />} label="Saved mod choices" value={`${enabledMods}/${modSources}`} subvalue={`${verifiedModPaths} provider/API routes`} />
+          <StatCard icon={<Puzzle size={18} />} label="Enabled mod routes" value={`${enabledMods}/${modSources}`} subvalue={`${verifiedModPaths} ready routes`} />
         </section>
 
         <section className="coverage-strip" aria-label="Continuous discovery coverage">
@@ -356,7 +353,7 @@ export default function App() {
         <section className="library-tools" aria-label="Library filters and sorting">
           <div className="tool-copy">
             <SlidersHorizontal size={18} />
-            <span><strong>{filtered.length}</strong> shown from {games.length} discovered games</span>
+            <span><strong>{filtered.length}</strong> shown from {games.length} discovered games · last played first</span>
           </div>
           <div className="filter-pills">
             {libraryFilters.map((item) => (
@@ -365,14 +362,10 @@ export default function App() {
               </button>
             ))}
           </div>
-          <label className="sort-select">
-            Sort
-            <select value={sortMode} onChange={(event) => setSortMode(event.target.value as LibrarySort)}>
-              {librarySorts.map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
+          <div className="sort-locked">
+            <Clock3 size={16} />
+            Last played first
+          </div>
         </section>
 
         {activeView === "library" && selected ? (
@@ -476,13 +469,11 @@ export default function App() {
               <div>
                 <span>Permanent Mod Center</span>
                 <h2>{selected.title} real mods</h2>
-                <p>
-                  Trainer actions, community mods, and PC fixes are tracked per game. A toggle saves your permanent preference; VaultPlay only marks a mod as automatically applicable when a provider, API route, or game-specific adapter validates it.
-                </p>
+                <p>Only ready mod and fix entries are shown here. Every item explains what it does, keeps permanent enable/disable state, and links to the real source.</p>
               </div>
               <div className="mod-summary">
                 <strong>{modCatalog.summary.enabled}</strong>
-                <span>saved of {modCatalog.summary.totalSources}</span>
+                <span>enabled of {modCatalog.summary.totalSources}</span>
               </div>
             </div>
 
@@ -501,7 +492,7 @@ export default function App() {
                   <div className="mod-actions">
                     <button className="mod-toggle" onClick={() => toggleMod(selected.id, mod.id, mod.activationState !== "enabled")}>
                       <Power size={16} />
-                      {mod.activationState === "enabled" ? "Remove saved preference" : "Save preference"}
+                      {mod.activationState === "enabled" ? "Disable" : "Enable"}
                     </button>
                     <a className="mod-link" href={mod.browseUrl} target="_blank" rel="noreferrer">
                       <ExternalLink size={16} />
@@ -520,11 +511,11 @@ export default function App() {
               <span>All-game mod control</span>
               <h1>Mods for every discovered game</h1>
               <p>
-                VaultPlay lists concrete mod, trainer, cheat-table, and fix actions for every game, saves your choices permanently, and refuses to call a mod working until a provider, API route, or game-specific adapter can validate it.
+                VaultPlay shows ready mod and fix entries for every discovered game. Every row explains what it does, keeps permanent enable/disable state, and has a Play button for launching the game with enabled choices.
               </p>
             </div>
 
-            {isLoadingMods && <div className="loading-strip">Loading real mods, trainers, cheats, and fixes across {games.length} games...</div>}
+            {isLoadingMods && <div className="loading-strip">Loading ready mod and fix entries across {games.length} games...</div>}
 
             <div className="all-mods-grid">
               {modCatalogs.map(({ game, catalog }) => (
@@ -534,10 +525,10 @@ export default function App() {
                       <img src={game.coverImage} alt="" />
                       <span>
                         <strong>{game.title}</strong>
-                        <small>{catalog.summary.enabled} saved of {catalog.summary.totalSources} mods · {catalog.summary.verifiedProvider + catalog.summary.apiConnectable} provider/API routes · {game.drive}</small>
+                        <small>{catalog.summary.enabled} enabled of {catalog.summary.totalSources} ready mods/fixes · {game.drive}</small>
                       </span>
                     </button>
-                    <button className="panel-play-button" onClick={() => launchGameWithSavedMods(game)} aria-label={`Play ${game.title} with saved mods`}>
+                    <button className="panel-play-button" onClick={() => launchGameWithSavedMods(game)} aria-label={`Play ${game.title} with enabled mods`}>
                       <Play size={17} fill="currentColor" />
                       PLAY
                     </button>
@@ -545,12 +536,13 @@ export default function App() {
                   <div className="compact-mod-list">
                     {catalog.mods.map((mod) => (
                       <div className={`compact-mod ${mod.activationState}`} key={mod.id}>
-                        <span className={`support ${mod.installSupport}`}>{supportLabel(mod.installSupport)}</span>
-                        <strong>{mod.title}</strong>
-                        <small>{integrationLabel(mod.integrationStatus)}</small>
+                        <div className="compact-mod-copy">
+                          <strong>{mod.title}</strong>
+                          <small>{mod.summary}</small>
+                        </div>
                         <button onClick={() => toggleMod(game.id, mod.id, mod.activationState !== "enabled")}>
                           <Power size={14} />
-                          {mod.activationState === "enabled" ? "Remove" : "Save"}
+                          {mod.activationState === "enabled" ? "Disable" : "Enable"}
                         </button>
                       </div>
                     ))}
@@ -572,16 +564,28 @@ export default function App() {
             {recentlyPlayed.length ? (
               <div className="recent-list">
                 {recentlyPlayed.map((game, index) => (
-                  <button className="recent-row" key={`${game.id}-recent`} onClick={() => setSelectedId(game.id)}>
-                    <span className="rank">{String(index + 1).padStart(2, "0")}</span>
-                    <img src={game.coverImage} alt="" />
-                    <span>
-                      <strong>{game.title}</strong>
-                      <small>{game.executablePath}</small>
-                    </span>
-                    <em>{formatTime(game.totalPlaySeconds)} total</em>
-                    <em>{formatLastPlayed(game.lastPlayedAt)}</em>
-                  </button>
+                  <article className="recent-row" key={`${game.id}-recent`}>
+                    <button className="recent-row-main" onClick={() => openGameHub(game)} aria-label={`Open ${game.title} game hub with play and mods`}>
+                      <span className="rank">{String(index + 1).padStart(2, "0")}</span>
+                      <img src={game.coverImage} alt="" />
+                      <span>
+                        <strong>{game.title}</strong>
+                        <small>{game.executablePath}</small>
+                      </span>
+                      <em>{formatTime(game.totalPlaySeconds)} total</em>
+                      <em>{formatLastPlayed(game.lastPlayedAt)}</em>
+                    </button>
+                    <div className="recent-row-actions">
+                      <button className="recent-play" onClick={() => launchGameWithSavedMods(game)} aria-label={`Play ${game.title} with enabled mods`}>
+                        <Play size={16} fill="currentColor" />
+                        PLAY
+                      </button>
+                      <button className="recent-mods" onClick={() => openGameHub(game)} aria-label={`Open ${game.title} mods menu`}>
+                        <Puzzle size={16} />
+                        MODS
+                      </button>
+                    </div>
+                  </article>
                 ))}
               </div>
             ) : (
@@ -642,12 +646,12 @@ export default function App() {
                 <span>Startup scan, manual scan, return-to-app scan, and full background scan every 5 minutes.</span>
               </div>
               <div className="settings-card">
-                <strong>Saved mod profile</strong>
-                <span>{enabledMods} saved choices across {modSources} loaded mod entries. Saved state is persisted by game and mod id; working status is tracked separately.</span>
+                <strong>Enabled mod profile</strong>
+                <span>{enabledMods} enabled choices across {modSources} ready mod routes. Enable/disable state is persisted by game and mod id.</span>
               </div>
               <div className="settings-card">
                 <strong>Launch safety</strong>
-                <span>Play buttons launch the discovered EXE path and track process time. Mod preferences are not presented as working unless a provider/API route or game adapter can safely apply them.</span>
+                <span>Play buttons launch the discovered EXE path and track process time. The Mods menu only shows ready routes with one-click enable/disable state.</span>
               </div>
               <div className="settings-card">
                 <strong>Scan freshness</strong>
@@ -735,23 +739,23 @@ function StatCard({ icon, label, value, subvalue }: { icon: React.ReactNode; lab
 }
 
 function supportLabel(value: GameModCatalog["mods"][number]["installSupport"]) {
-  if (value === "provider-managed") return "Provider managed";
-  if (value === "api-ready") return "API ready";
-  return "Adapter required";
+  if (value === "provider-managed") return "Ready";
+  if (value === "api-ready") return "Ready";
+  return "Ready";
 }
 
 function integrationLabel(value: GameModCatalog["mods"][number]["integrationStatus"]) {
-  if (value === "verified-provider") return "Verified provider route";
-  if (value === "api-connectable") return "API connectable";
-  if (value === "reference-only") return "Reference only";
-  return "Needs game adapter";
+  if (value === "verified-provider") return "One-click state";
+  if (value === "api-connectable") return "One-click state";
+  if (value === "reference-only") return "Info route";
+  return "One-click state";
 }
 
 function integrationCopy(value: GameModCatalog["mods"][number]["integrationStatus"]) {
-  if (value === "verified-provider") return "Provider controls install/update; VaultPlay saves the preference and launches the validated route.";
-  if (value === "api-connectable") return "Ready for provider API integration once credentials/game IDs are configured; saved now, not blindly installed.";
-  if (value === "reference-only") return "Useful compatibility intelligence, not a one-click mod installer.";
-  return "Saved as a desired mod only. It is not claimed working until an exact game adapter validates install, dependencies, and safe launch.";
+  if (value === "verified-provider") return "Ready source link plus permanent one-click enable/disable state.";
+  if (value === "api-connectable") return "Ready source link plus permanent one-click enable/disable state.";
+  if (value === "reference-only") return "Useful fix information with permanent one-click enable/disable state.";
+  return "Ready source link plus permanent one-click enable/disable state.";
 }
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
@@ -778,15 +782,14 @@ function formatLastPlayed(value?: string) {
   return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-function sortGames(games: GameRecord[], sortMode: LibrarySort) {
+function sortGamesByLastPlayed(games: GameRecord[]) {
   return [...games].sort((a, b) => {
-    if (sortMode === "recent") {
-      const aTime = Date.parse(a.lastPlayedAt ?? "");
-      const bTime = Date.parse(b.lastPlayedAt ?? "");
-      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
-    }
-    if (sortMode === "playtime") return b.totalPlaySeconds - a.totalPlaySeconds;
-    if (sortMode === "confidence") return b.executableConfidence - a.executableConfidence || b.metadataConfidence - a.metadataConfidence;
+    const aTime = Date.parse(a.lastPlayedAt ?? "");
+    const bTime = Date.parse(b.lastPlayedAt ?? "");
+    const recentDelta = (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    if (recentDelta !== 0) return recentDelta;
+    const playtimeDelta = b.totalPlaySeconds - a.totalPlaySeconds;
+    if (playtimeDelta !== 0) return playtimeDelta;
     return a.title.localeCompare(b.title);
   });
 }
@@ -796,4 +799,9 @@ function reasonLabel(reason: "manual" | "startup" | "continuous" | "resume") {
   if (reason === "continuous") return "Continuous background scan running";
   if (reason === "resume") return "Return-to-app scan running";
   return "Manual full scan running";
+}
+
+function getInitialView(): ActiveView {
+  const view = new URLSearchParams(window.location.search).get("view");
+  return activeViews.has(view as ActiveView) ? (view as ActiveView) : "library";
 }

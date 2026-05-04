@@ -36,7 +36,7 @@ try {
 
   const state = await readModState(modStateFile);
   const catalogs = games.map((game) => buildModCatalog(game, state));
-  const undersizedCatalogs = catalogs.filter((catalog) => catalog.summary.totalSources < 18);
+  const undersizedCatalogs = catalogs.filter((catalog) => catalog.summary.totalSources < 5);
   const badSummaries = catalogs.filter((catalog) => catalog.summary.enabled + catalog.summary.disabled !== catalog.summary.totalSources);
   const badIntegrationSummaries = catalogs.filter((catalog) => {
     const integrationTotal = catalog.summary.verifiedProvider + catalog.summary.apiConnectable + catalog.summary.needsGameAdapter + catalog.summary.referenceOnly;
@@ -54,17 +54,24 @@ try {
       .filter((mod) => /guaranteed|works perfectly|working in-game|automatically applied/i.test(`${mod.title} ${mod.summary} ${mod.installStrategy}`))
       .map((mod) => `${catalog.gameTitle} -> ${mod.title}`),
   );
+  const adapterMissingMods = catalogs.flatMap((catalog) =>
+    catalog.mods
+      .filter((mod) => mod.installSupport === "adapter-required" || mod.integrationStatus === "needs-game-adapter" || mod.activationMode === "adapter-required")
+      .map((mod) => `${catalog.gameTitle} -> ${mod.title}`),
+  );
   assert(undersizedCatalogs.length === 0, `Mod catalogs too small: ${undersizedCatalogs.map((catalog) => catalog.gameTitle).join(", ")}`);
   assert(badSummaries.length === 0, `Mod summaries do not add up: ${badSummaries.map((catalog) => catalog.gameTitle).join(", ")}`);
   assert(badIntegrationSummaries.length === 0, `Mod integration summaries do not add up: ${badIntegrationSummaries.map((catalog) => catalog.gameTitle).join(", ")}`);
   assert(duplicateModIds.length === 0, `Duplicate mod IDs: ${duplicateModIds.map((catalog) => catalog.gameTitle).join(", ")}`);
   assert(missingEvidenceMods.length === 0, `Mods missing actionable evidence: ${missingEvidenceMods.join(", ")}`);
   assert(falseWorkingClaims.length === 0, `Adapter-required mods falsely claim working status: ${falseWorkingClaims.join(", ")}`);
+  assert(adapterMissingMods.length === 0, `Adapter-missing mods must not appear in ready mod catalogs: ${adapterMissingMods.join(", ")}`);
   checks.push({ name: "mod-catalog-integrity", catalogs: catalogs.length, totalMods: catalogs.reduce((sum, catalog) => sum + catalog.summary.totalSources, 0) });
   checks.push({
-    name: "mod-truthfulness",
+    name: "mod-readiness",
     providerOrApiRoutes: catalogs.reduce((sum, catalog) => sum + catalog.summary.verifiedProvider + catalog.summary.apiConnectable, 0),
     needsGameAdapter: catalogs.reduce((sum, catalog) => sum + catalog.summary.needsGameAdapter, 0),
+    adapterRequired: catalogs.reduce((sum, catalog) => sum + catalog.summary.adapterRequired, 0),
     referenceOnly: catalogs.reduce((sum, catalog) => sum + catalog.summary.referenceOnly, 0),
   });
 

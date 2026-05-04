@@ -179,22 +179,33 @@ button {
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(520px, 1fr) minmax(280px, 520px);
   align-items: center;
-  justify-content: space-between;
   gap: 18px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .search {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 420px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 14px;
+  min-width: 520px;
+  min-height: 72px;
+  padding: 18px 22px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(247, 212, 139, 0.22), transparent 15rem),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.045));
+  border: 1px solid rgba(247, 212, 139, 0.24);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.search svg {
+  width: 25px;
+  height: 25px;
+  color: #f7d48b;
 }
 
 .search input {
@@ -203,6 +214,13 @@ button {
   border: 0;
   outline: 0;
   background: transparent;
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.search input::placeholder {
+  color: rgba(246, 241, 231, 0.48);
 }
 
 .status-line {
@@ -346,6 +364,22 @@ button {
   color: rgba(246, 241, 231, 0.62);
   font-size: 0.8rem;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sort-locked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  border: 1px solid rgba(72, 240, 167, 0.18);
+  border-radius: 16px;
+  color: #f7d48b;
+  background: rgba(0, 0, 0, 0.26);
+  font-size: 0.8rem;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -814,10 +848,6 @@ h1 {
   background: #9ed3ff;
 }
 
-.support.adapter-required {
-  background: #ffaf9a;
-}
-
 .integration {
   display: inline-flex;
   width: fit-content;
@@ -837,11 +867,6 @@ h1 {
 .integration.api-connectable {
   color: #061016;
   background: #9ed3ff;
-}
-
-.integration.needs-game-adapter {
-  color: #061016;
-  background: #ffaf9a;
 }
 
 .integration.reference-only {
@@ -1056,10 +1081,10 @@ h1 {
 
 .compact-mod {
   display: grid;
-  grid-template-columns: 120px 130px minmax(0, 1fr) 96px;
+  grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
-  gap: 8px;
-  padding: 10px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.045);
@@ -1070,16 +1095,27 @@ h1 {
   background: rgba(72, 240, 167, 0.08);
 }
 
-.compact-mod strong,
-.compact-mod small {
+.compact-mod-copy {
+  min-width: 0;
+}
+
+.compact-mod-copy strong,
+.compact-mod-copy small {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.compact-mod small {
-  color: rgba(246, 241, 231, 0.58);
+.compact-mod-copy strong {
+  font-size: 0.98rem;
+}
+
+.compact-mod-copy small {
+  margin-top: 4px;
+  color: rgba(246, 241, 231, 0.66);
+  font-size: 0.78rem;
 }
 
 .compact-mod button {
@@ -1106,21 +1142,32 @@ h1 {
 
 .recent-row {
   display: grid;
-  grid-template-columns: 48px 64px minmax(0, 1fr) 140px 190px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 22px;
   color: #f6f1e7;
-  text-align: left;
   background: rgba(255, 255, 255, 0.045);
 }
 
 .recent-row:hover {
   border-color: rgba(247, 212, 139, 0.42);
   background: rgba(255, 255, 255, 0.09);
+}
+
+.recent-row-main {
+  display: grid;
+  grid-template-columns: 48px 64px minmax(0, 1fr) 140px 190px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
 }
 
 .recent-row .rank {
@@ -1133,6 +1180,36 @@ h1 {
   font-style: normal;
   font-weight: 800;
   text-align: right;
+}
+
+.recent-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recent-row-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: #071017;
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+}
+
+.recent-play {
+  background: linear-gradient(135deg, #f7d48b, #ff8f55);
+  box-shadow: 0 14px 28px rgba(255, 143, 85, 0.22);
+}
+
+.recent-mods {
+  background: linear-gradient(135deg, #9ed3ff, #48f0a7);
 }
 
 .empty-panel h2 {

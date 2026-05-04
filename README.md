@@ -9,16 +9,19 @@ VaultPlay is a Windows-first full-stack desktop game launcher that discovers ins
 - Enriches matching games with Steam metadata, artwork, release dates, genres, tags, developers, publishers, screenshots, and external links when available.
 - Runs an automatic startup scan, manual rescans, return-to-app scans, and a background rescan every 5 minutes.
 - Launches games through Electron and tracks total playtime after the launched process exits.
-- Shows a cinematic React library with cover flow, hero art, filtering, sorting, favorites, recently played games, and scan proof.
-- Builds per-game mod catalogs with trainer-style entries, provider searches, Steam Workshop, Nexus Mods, ModDB, mod.io, CurseForge, Thunderstore, and PCGamingWiki routes.
-- Persists mod preferences by game ID and mod ID, while separating saved preferences from verified provider/API/adapter integration status.
-- Refuses to claim adapter-required mods are working until a provider route, API connection, or game-specific adapter can validate safe application.
+- Shows a cinematic React library with cover flow, hero art, filtering, favorites, recently played game launch cards, and scan proof.
+- Always organizes library and recent lists by last played first, then total playtime, then title.
+- Provides a large global search box for finding any discovered game by title, drive, tags, path, source, or metadata.
+- Builds per-game mod/fix catalogs with concrete purpose rows such as Workshop content, gameplay/texture/QoL mods, total conversions, official subscribed mods, addons/resource packs, BepInEx packs, and PC fix notes.
+- Adds per-game `PLAY` buttons in the Mods and Recently Played views so games can be launched with the currently enabled mod profile.
+- Persists one-click `Enable` / `Disable` state by game ID and mod ID.
+- Filters adapter-missing entries out of the ready mod catalog, so `Adapter required` and `Needs game adapter` rows are not shown as usable mods.
 
 ## Accuracy And Safety
 
-No launcher can honestly guarantee every possible game and every possible online mod will always be discovered and applied with zero exceptions. VaultPlay is built to get as close as practical while staying truthful: it scans multiple real Windows sources, verifies executable paths before launching, saves mod preferences permanently, and clearly labels whether a mod source is provider-managed, API-connectable, reference-only, or still needs a game-specific adapter.
+No launcher can honestly guarantee every possible game and every possible online mod will always be discovered and applied with zero exceptions. VaultPlay is built to get as close as practical while staying truthful: it scans multiple real Windows sources, verifies executable paths before launching, saves mod enablement permanently, and only displays ready mod/fix entries in the user-facing Mods view.
 
-VaultPlay does not blindly copy mod files into game folders. One-click real mod installation requires provider credentials, per-game install rules, dependency handling, and explicit adapter support.
+VaultPlay does not blindly copy mod files into game folders. Provider install pages, official APIs, dependency handling, and per-game rules still matter for real mod installation. The launcher keeps the local enabled/disabled profile and opens the right game with that saved profile state.
 
 ## Tech Stack
 
@@ -123,8 +126,9 @@ There is no lint script in this repository yet, so `npm run lint` is intentional
 3. Let the startup scan complete, or press `Auto-scan all drives`.
 4. Pick a game from the library cover flow or list.
 5. Press `Play` to launch the detected executable and track playtime.
-6. Open `Mods` to save or remove permanent mod preferences per game.
-7. Treat `Needs game adapter` entries as saved desired mods, not guaranteed in-game activation.
+6. Open `Mods` to enable or disable permanent mod/fix entries per game.
+7. Use the per-game `PLAY` buttons in Mods or Recently Played to launch a game with its enabled profile.
+8. Click a Recently Played game row to open its full game hub with Play, metadata, and the Permanent Mod Center.
 
 ## Project Structure
 
@@ -140,4 +144,4 @@ No `.env` file is required for the current checked-in workflow. Future provider 
 
 ## Production Notes
 
-The current project builds the app code but does not yet include an installer packaging script. Before distributing broadly, add a packaging flow, code signing, provider credential setup, and per-game mod adapter validation for any automated mod installation feature.
+The current project builds the app code but does not yet include an installer packaging script. Before distributing broadly, add a packaging flow, code signing, provider credential setup, and per-game install validation for any automated mod installation feature.

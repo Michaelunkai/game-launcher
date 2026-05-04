@@ -6,3 +6,4 @@ dist-electron/
 preview-screenshot.png
 .local-data/
 %SystemDrive%/
+.playwright-mcp/
