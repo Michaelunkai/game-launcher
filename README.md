@@ -1,3 +1,9 @@
+# PowerShell v5 local run one-liner
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-Location 'F:\study\projects\GameLauncher'; npm run preview:full"
+```
+
 # VaultPlay Game Launcher
 
 VaultPlay is a Windows-first full-stack desktop game launcher that discovers installed PC games across local drives, enriches the library with useful metadata and artwork, launches the detected executable, tracks playtime, and manages per-game mod preferences from one polished interface.
