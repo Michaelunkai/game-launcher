@@ -1,0 +1,37 @@
+{
+  "name": "game-launcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Windows 11 gaming launcher that discovers games across drives, enriches metadata, launches the correct executable, and tracks playtime.",
+  "main": "dist-electron/electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite --host 127.0.0.1 --port 5173",
+    "dev:electron": "wait-on tcp:5173 && tsc -p tsconfig.electron.json && electron .",
+    "build": "tsc -p tsconfig.json && vite build && tsc -p tsconfig.electron.json",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "preview:api": "node scripts/preview-api.mjs",
+    "preview:full": "concurrently -k \"npm:preview\" \"npm:preview:api\"",
+    "verify:backend": "node scripts/backend-regression.mjs",
+    "verify:mods": "node scripts/mod-persistence-regression.mjs",
+    "verify:scanner": "node scripts/scanner-regression.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.7",
+    "lucide-react": "^0.561.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "vite": "^7.2.7",
+    "wait-on": "^9.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
+  }
+}
